@@ -14,9 +14,13 @@
   "background": {
     "service_worker": "background.js"
   },
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
+  "commands": {
+    "close-duplicates": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Close duplicate tabs"
+    }
   }
 }
