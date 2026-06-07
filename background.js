@@ -27,7 +27,7 @@ async function cleanUpTabs() {
 }
 
 async function closeDuplicateTabs() {
-    const tabs = await chrome.tabs.query({});
+    const tabs = await chrome.tabs.query({ lastFocusedWindow: true });
 
     // Group tabs by URL
     const urlGroups = {};
@@ -60,8 +60,8 @@ async function sortTabs(mode) {
         ? (a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0)
         : (a, b) => (a.url || '').localeCompare(b.url || '');
 
-    // Get all tabs and group them by window (tab indices are window-scoped)
-    const tabs = await chrome.tabs.query({});
+    // Get tabs in the last-focused window only (tab indices are window-scoped)
+    const tabs = await chrome.tabs.query({ lastFocusedWindow: true });
     const windowGroups = {};
     tabs.forEach(tab => {
         if (!windowGroups[tab.windowId]) {
