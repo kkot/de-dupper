@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function sortTabs(mode) {
         const compare = mode === 'recent'
-            ? (a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0)
+            ? (a, b) => (a.lastAccessed || 0) - (b.lastAccessed || 0)
             : (a, b) => (a.url || '').localeCompare(b.url || '');
 
         // Get tabs in the current window only (tab indices are window-scoped)
