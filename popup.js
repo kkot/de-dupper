@@ -23,12 +23,13 @@ document.addEventListener('DOMContentLoaded', function() {
             button.textContent = 'Processing...';
 
             const mode = sortMode.value;
+            const windowQuery = { currentWindow: true };
 
             // 1. Close duplicate tabs (keep the oldest tab per URL)
-            const closedCount = await closeDuplicateTabs();
+            const closedCount = await closeDuplicateTabs(windowQuery);
 
             // 2. Sort the remaining tabs by the selected mode
-            const sortedCount = await sortTabs(mode);
+            const sortedCount = await sortTabs(mode, windowQuery);
 
             const label = mode === 'recent' ? 'recent usage' : 'URL';
             const closedMsg = closedCount > 0
@@ -42,66 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
             button.disabled = false;
             button.textContent = 'Sort & Close Duplicates';
         }
-    }
-
-    async function closeDuplicateTabs() {
-        const tabs = await chrome.tabs.query({ currentWindow: true });
-
-        // Group tabs by URL
-        const urlGroups = {};
-        tabs.forEach(tab => {
-            if (!urlGroups[tab.url]) {
-                urlGroups[tab.url] = [];
-            }
-            urlGroups[tab.url].push(tab);
-        });
-
-        // Keep the oldest tab (lowest id) per URL, close the rest
-        const tabsToClose = [];
-        Object.values(urlGroups).forEach(group => {
-            if (group.length > 1) {
-                group.sort((a, b) => a.id - b.id);
-                for (let i = 1; i < group.length; i++) {
-                    tabsToClose.push(group[i].id);
-                }
-            }
-        });
-
-        if (tabsToClose.length > 0) {
-            await chrome.tabs.remove(tabsToClose);
-        }
-        return tabsToClose.length;
-    }
-
-    async function sortTabs(mode) {
-        const compare = mode === 'recent'
-            ? (a, b) => (a.lastAccessed || 0) - (b.lastAccessed || 0)
-            : (a, b) => (a.url || '').localeCompare(b.url || '');
-
-        // Get tabs in the current window only (tab indices are window-scoped)
-        const tabs = await chrome.tabs.query({ currentWindow: true });
-        const windowGroups = {};
-        tabs.forEach(tab => {
-            if (!windowGroups[tab.windowId]) {
-                windowGroups[tab.windowId] = [];
-            }
-            windowGroups[tab.windowId].push(tab);
-        });
-
-        // Sort each window. Pinned tabs must stay before unpinned ones, so each
-        // group is sorted independently and the pinned block is kept at the front.
-        let sortedCount = 0;
-        for (const group of Object.values(windowGroups)) {
-            const pinned = group.filter(t => t.pinned).sort(compare);
-            const unpinned = group.filter(t => !t.pinned).sort(compare);
-            const ordered = [...pinned, ...unpinned];
-
-            for (let index = 0; index < ordered.length; index++) {
-                await chrome.tabs.move(ordered[index].id, { index });
-            }
-            sortedCount += ordered.length;
-        }
-        return sortedCount;
     }
 
     function showStatus(message, type) {
