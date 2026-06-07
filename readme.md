@@ -9,7 +9,6 @@ A simple Chrome extension that automatically closes duplicate tabs with one clic
 - 💡 **Preserves oldest tabs** - Keeps the first opened tab for each URL
 - 📊 **User feedback** - Shows how many duplicates were closed
 - 🎨 **Clean interface** - Modern, intuitive popup design
-- ⚡ **Fast performance** - Processes tabs quickly and efficiently
 
 ## Installation
 
@@ -61,20 +60,6 @@ The extension uses Chrome's tabs API to:
 3. **Preserve the oldest tab** for each unique URL (based on tab ID)
 4. **Close duplicate tabs** automatically
 5. **Provide feedback** on the number of tabs closed
-
-## File Structure
-
-```
-duplicate-tab-closer/
-├── manifest.json          # Extension configuration
-├── popup.html            # User interface
-├── popup.js              # Main logic for closing duplicates
-├── background.js         # Background service worker
-├── icon16.png           # 16x16 icon (optional)
-├── icon48.png           # 48x48 icon (optional)
-├── icon128.png          # 128x128 icon (optional)
-└── README.md            # This file
-```
 
 ## Permissions Required
 

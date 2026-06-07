@@ -5,7 +5,8 @@
   "description": "Automatically close duplicate tabs with one click",
   "permissions": [
     "tabs",
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "action": {
     "default_popup": "popup.html",
