@@ -13,7 +13,8 @@ remaining tabs. Run it from the popup button or with the keyboard shortcut
 - **Sort:** the remaining tabs are sorted by the selected mode:
   - `URL` — alphabetically by URL.
   - `Recent usage` — most recently accessed first.
-- Pinned tabs stay at the front of the window and are sorted among themselves.
+- Pinned tabs are left untouched — they keep their position and order; only the
+  unpinned tabs are sorted.
 - The selected sort mode is persisted and reused, including for the shortcut.
 - A second shortcut (`Ctrl+Shift+D`, `Cmd+Shift+D` on macOS) switches the sort
   mode (URL ⇄ Recent usage) and then runs dedup + sort with the new mode.

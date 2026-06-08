@@ -51,18 +51,17 @@ async function sortTabs(mode, windowQuery) {
         windowGroups[tab.windowId].push(tab);
     });
 
-    // Sort each window. Pinned tabs must stay before unpinned ones, so each
-    // group is sorted independently and the pinned block is kept at the front.
+    // Sort each window. Pinned tabs are left exactly where they are; only the
+    // unpinned tabs are sorted and moved into place after the pinned block.
     let sortedCount = 0;
     for (const group of Object.values(windowGroups)) {
-        const pinned = group.filter(t => t.pinned).sort(compare);
+        const pinnedCount = group.filter(t => t.pinned).length;
         const unpinned = group.filter(t => !t.pinned).sort(compare);
-        const ordered = [...pinned, ...unpinned];
 
-        for (let index = 0; index < ordered.length; index++) {
-            await chrome.tabs.move(ordered[index].id, { index });
+        for (let i = 0; i < unpinned.length; i++) {
+            await chrome.tabs.move(unpinned[i].id, { index: pinnedCount + i });
         }
-        sortedCount += ordered.length;
+        sortedCount += unpinned.length;
     }
     return sortedCount;
 }
