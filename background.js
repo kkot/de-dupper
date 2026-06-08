@@ -11,13 +11,21 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.commands.onCommand.addListener((command) => {
     if (command === 'close-duplicates') {
         cleanUpTabs();
+    } else if (command === 'toggle-sort-and-clean') {
+        cleanUpTabs({ toggleMode: true });
     }
 });
 
-async function cleanUpTabs() {
+async function cleanUpTabs({ toggleMode = false } = {}) {
     try {
         const { sortMode } = await chrome.storage.local.get('sortMode');
-        const mode = sortMode || 'url';
+        let mode = sortMode || 'url';
+
+        // Switch the sort mode and persist it so the popup reflects the change.
+        if (toggleMode) {
+            mode = mode === 'url' ? 'recent' : 'url';
+            await chrome.storage.local.set({ sortMode: mode });
+        }
 
         // Background runs without a focused tab, so target the last-focused window.
         const windowQuery = { lastFocusedWindow: true };
