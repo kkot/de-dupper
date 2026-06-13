@@ -12,7 +12,8 @@ remaining tabs. Run it from the popup button or with the keyboard shortcut
   the trailing slash and query parameters.
 - **Sort:** the remaining tabs are sorted by the selected mode:
   - `URL` — alphabetically by URL.
-  - `Recent usage` — most recently accessed first.
+  - `Recent usage` — by last-access time, least recently used first (most
+    recently used last).
 - Pinned tabs are left untouched — they keep their position and order; only the
   unpinned tabs are sorted.
 - The selected sort mode is persisted and reused, including for the shortcut.
