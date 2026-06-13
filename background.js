@@ -5,7 +5,24 @@ importScripts('tabs.js');
 
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Duplicate Tab Closer extension installed');
+    refreshModeBadge();
 });
+
+// Re-apply the badge when the worker spins back up (browser start, wake-up).
+chrome.runtime.onStartup.addListener(refreshModeBadge);
+
+// Keep the badge in sync with whatever changes the sort mode: the popup
+// dropdown, the toggle shortcut, anything that writes to storage.
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.sortMode) {
+        updateModeBadge(changes.sortMode.newValue);
+    }
+});
+
+async function refreshModeBadge() {
+    const { sortMode } = await chrome.storage.local.get('sortMode');
+    updateModeBadge(sortMode || 'url');
+}
 
 // Keyboard shortcut support: run the same sort + dedup action as the popup
 chrome.commands.onCommand.addListener((command) => {

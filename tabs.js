@@ -7,6 +7,14 @@
 //                                                  "current" window, so it uses
 //                                                  the most recently focused one)
 
+// Reflect the active sort mode on the toolbar icon as a short badge so the
+// current mode is visible without opening the popup.
+function updateModeBadge(mode) {
+    const isRecent = mode === 'recent';
+    chrome.action.setBadgeText({ text: isRecent ? 'REC' : 'URL' });
+    chrome.action.setBadgeBackgroundColor({ color: isRecent ? '#34a853' : '#4285f4' });
+}
+
 async function closeDuplicateTabs(windowQuery) {
     const tabs = await chrome.tabs.query(windowQuery);
 
