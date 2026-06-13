@@ -59,17 +59,44 @@ async function sortTabs(mode, windowQuery) {
         windowGroups[tab.windowId].push(tab);
     });
 
-    // Sort each window. Pinned tabs are left exactly where they are; only the
-    // unpinned tabs are sorted and moved into place after the pinned block.
+    // Sort each window in place. Tabs are split into contiguous segments that
+    // must never be reordered across one another: the pinned block, each tab
+    // group, and each run of ungrouped tabs. We only sort *within* a segment,
+    // because moving a grouped tab outside its group's index range is exactly
+    // what pulls it out of the group. Pinned tabs are left untouched.
     let sortedCount = 0;
-    for (const group of Object.values(windowGroups)) {
-        const pinnedCount = group.filter(t => t.pinned).length;
-        const unpinned = group.filter(t => !t.pinned).sort(compare);
+    for (const windowTabs of Object.values(windowGroups)) {
+        windowTabs.sort((a, b) => a.index - b.index);
 
-        for (let i = 0; i < unpinned.length; i++) {
-            await chrome.tabs.move(unpinned[i].id, { index: pinnedCount + i });
+        let segment = [];
+        let segmentKey = null;
+        const flushSegment = async () => {
+            if (segment.length && segmentKey !== 'pinned') {
+                const start = segment[0].index;
+                const sorted = [...segment].sort(compare);
+                for (let i = 0; i < sorted.length; i++) {
+                    await chrome.tabs.move(sorted[i].id, { index: start + i });
+                }
+                sortedCount += sorted.length;
+            }
+            segment = [];
+        };
+
+        for (const tab of windowTabs) {
+            // groupId is -1 (or undefined on browsers without tab groups) when
+            // a tab is ungrouped.
+            const key = tab.pinned
+                ? 'pinned'
+                : (tab.groupId !== undefined && tab.groupId !== -1)
+                    ? `group:${tab.groupId}`
+                    : 'ungrouped';
+            if (key !== segmentKey) {
+                await flushSegment();
+                segmentKey = key;
+            }
+            segment.push(tab);
         }
-        sortedCount += unpinned.length;
+        await flushSegment();
     }
     return sortedCount;
 }
