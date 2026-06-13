@@ -44,13 +44,41 @@ async function closeDuplicateTabs(windowQuery) {
     return tabsToClose.length;
 }
 
-async function sortTabs(mode, windowQuery) {
-    const compare = mode === 'recent'
+// Compare function for a given sort mode. 'recent' orders by last-accessed
+// time; anything else (default 'url') orders alphabetically by URL.
+function getCompare(mode) {
+    return mode === 'recent'
         ? (a, b) => (a.lastAccessed || 0) - (b.lastAccessed || 0)
         : (a, b) => (a.url || '').localeCompare(b.url || '');
+}
 
-    // Tab indices are window-scoped, so sort within each window separately.
-    const tabs = await chrome.tabs.query(windowQuery);
+// The contiguous-segment key for a tab. Tabs are split into segments that must
+// never be reordered across one another: the pinned block, each tab group, and
+// each run of ungrouped tabs. groupId is -1 (or undefined on browsers without
+// tab groups) when a tab is ungrouped.
+function segmentKeyFor(tab) {
+    return tab.pinned
+        ? 'pinned'
+        : (tab.groupId !== undefined && tab.groupId !== -1)
+            ? `group:${tab.groupId}`
+            : 'ungrouped';
+}
+
+// Pure planning step: given the tabs to sort and a mode, return the list of
+// { id, index } moves needed to sort them. No chrome API access, so this is
+// what the unit tests exercise.
+//
+// Tab indices are window-scoped, so each window is sorted independently. Within
+// a window, only *within* a segment is sorted — moving a grouped tab outside
+// its group's index range is exactly what pulls it out of the group. Pinned
+// tabs are left untouched.
+//
+// Each tab in a non-pinned segment produces a move (even if it doesn't change
+// position), so moves.length equals the number of tabs that were sorted.
+function planTabMoves(tabs, mode) {
+    const compare = getCompare(mode);
+    const moves = [];
+
     const windowGroups = {};
     tabs.forEach(tab => {
         if (!windowGroups[tab.windowId]) {
@@ -59,44 +87,47 @@ async function sortTabs(mode, windowQuery) {
         windowGroups[tab.windowId].push(tab);
     });
 
-    // Sort each window in place. Tabs are split into contiguous segments that
-    // must never be reordered across one another: the pinned block, each tab
-    // group, and each run of ungrouped tabs. We only sort *within* a segment,
-    // because moving a grouped tab outside its group's index range is exactly
-    // what pulls it out of the group. Pinned tabs are left untouched.
-    let sortedCount = 0;
     for (const windowTabs of Object.values(windowGroups)) {
         windowTabs.sort((a, b) => a.index - b.index);
 
         let segment = [];
         let segmentKey = null;
-        const flushSegment = async () => {
+        const flushSegment = () => {
             if (segment.length && segmentKey !== 'pinned') {
                 const start = segment[0].index;
                 const sorted = [...segment].sort(compare);
                 for (let i = 0; i < sorted.length; i++) {
-                    await chrome.tabs.move(sorted[i].id, { index: start + i });
+                    moves.push({ id: sorted[i].id, index: start + i });
                 }
-                sortedCount += sorted.length;
             }
             segment = [];
         };
 
         for (const tab of windowTabs) {
-            // groupId is -1 (or undefined on browsers without tab groups) when
-            // a tab is ungrouped.
-            const key = tab.pinned
-                ? 'pinned'
-                : (tab.groupId !== undefined && tab.groupId !== -1)
-                    ? `group:${tab.groupId}`
-                    : 'ungrouped';
+            const key = segmentKeyFor(tab);
             if (key !== segmentKey) {
-                await flushSegment();
+                flushSegment();
                 segmentKey = key;
             }
             segment.push(tab);
         }
-        await flushSegment();
+        flushSegment();
     }
-    return sortedCount;
+
+    return moves;
+}
+
+async function sortTabs(mode, windowQuery) {
+    const tabs = await chrome.tabs.query(windowQuery);
+    const moves = planTabMoves(tabs, mode);
+    for (const move of moves) {
+        await chrome.tabs.move(move.id, { index: move.index });
+    }
+    return moves.length;
+}
+
+// Exported for unit tests (Node). In the browser there is no module system, so
+// this block is skipped and the functions stay as plain script-scope globals.
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { getCompare, segmentKeyFor, planTabMoves };
 }

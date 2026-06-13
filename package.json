@@ -1,0 +1,9 @@
+{
+  "name": "de-dupper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome extension that closes duplicate tabs and sorts the rest",
+  "scripts": {
+    "test": "node --test"
+  }
+}
