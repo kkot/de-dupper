@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { getCompare, segmentKeyFor, planTabMoves } = require('../tabs.js');
+const { getCompare, segmentKeyFor, planTabMoves, planDuplicatesToClose } = require('../tabs.js');
 
 // Build a tab with sensible defaults; override only what a test cares about.
 function tab(overrides) {
@@ -19,17 +19,23 @@ function tab(overrides) {
     };
 }
 
-// Apply a list of { id, index } moves to a snapshot the way chrome does:
-// remove the tab and reinsert it at the target index. Lets tests assert the
-// final visible order rather than raw move ops.
+// Replay batch moves the way chrome does (remove, then reinsert at index) so
+// tests can assert the final visible order rather than raw move ops.
 function applyMoves(tabs, moves) {
     const order = [...tabs].sort((a, b) => a.index - b.index);
-    for (const move of moves) {
-        const from = order.findIndex(t => t.id === move.id);
-        const [moved] = order.splice(from, 1);
-        order.splice(move.index, 0, moved);
+    for (const { index, ids } of moves) {
+        const moved = ids.map(id => order.find(t => t.id === id));
+        for (const m of moved) {
+            order.splice(order.indexOf(m), 1);
+        }
+        order.splice(index, 0, ...moved);
     }
     return order.map(t => t.id);
+}
+
+// Total tabs sorted across all batch moves (what sortTabs returns).
+function sortedCount(moves) {
+    return moves.reduce((n, m) => n + m.ids.length, 0);
 }
 
 test('getCompare: url mode orders alphabetically by url', () => {
@@ -81,7 +87,7 @@ test('planTabMoves: sorts a simple ungrouped window by url', () => {
     ];
     const moves = planTabMoves(tabs, 'url');
     assert.deepEqual(applyMoves(tabs, moves), [2, 3, 1]);
-    assert.equal(moves.length, 3);
+    assert.equal(sortedCount(moves), 3);
 });
 
 test('planTabMoves: sorts by recent usage (oldest accessed first)', () => {
@@ -103,7 +109,7 @@ test('planTabMoves: pinned tabs are left untouched and not counted', () => {
     ];
     const moves = planTabMoves(tabs, 'url');
     // Only the two unpinned tabs are sorted; pinned block keeps z,y order.
-    assert.equal(moves.length, 2);
+    assert.equal(sortedCount(moves), 2);
     assert.deepEqual(applyMoves(tabs, moves), [1, 2, 4, 3]);
 });
 
@@ -154,8 +160,8 @@ test('planTabMoves: windows are sorted independently', () => {
     const moves = planTabMoves(tabs, 'url');
     const w1 = tabs.filter(t => t.windowId === 1);
     const w2 = tabs.filter(t => t.windowId === 2);
-    const w1Moves = moves.filter(m => [1, 2].includes(m.id));
-    const w2Moves = moves.filter(m => [3, 4].includes(m.id));
+    const w1Moves = moves.filter(m => m.ids.some(id => [1, 2].includes(id)));
+    const w2Moves = moves.filter(m => m.ids.some(id => [3, 4].includes(id)));
     assert.deepEqual(applyMoves(w1, w1Moves), [2, 1]);
     assert.deepEqual(applyMoves(w2, w2Moves), [4, 3]);
 });
@@ -166,25 +172,77 @@ test('planTabMoves: target indices are window-scoped (start from segment index)'
         tab({ id: 4, windowId: 2, index: 1, url: 'https://m.com' }),
     ];
     const moves = planTabMoves(tabs, 'url');
-    // Window 2's first tab still targets index 0, not a global offset.
-    assert.deepEqual(moves, [
-        { id: 4, index: 0 },
-        { id: 3, index: 1 },
-    ]);
+    // Window 2's segment still targets index 0, not a global offset.
+    assert.deepEqual(moves, [{ index: 0, ids: [4, 3] }]);
 });
 
-test('planTabMoves: already-sorted tabs still produce in-place moves', () => {
+test('planTabMoves: already-sorted tabs still produce an in-place move', () => {
     const tabs = [
         tab({ id: 1, index: 0, url: 'https://a.com' }),
         tab({ id: 2, index: 1, url: 'https://b.com' }),
     ];
     const moves = planTabMoves(tabs, 'url');
-    assert.deepEqual(moves, [
-        { id: 1, index: 0 },
-        { id: 2, index: 1 },
-    ]);
+    assert.deepEqual(moves, [{ index: 0, ids: [1, 2] }]);
 });
 
 test('planTabMoves: empty input yields no moves', () => {
     assert.deepEqual(planTabMoves([], 'url'), []);
+});
+
+test('planDuplicatesToClose: no duplicates yields nothing to close', () => {
+    const tabs = [
+        tab({ id: 1, url: 'https://a.com' }),
+        tab({ id: 2, url: 'https://b.com' }),
+    ];
+    assert.deepEqual(planDuplicatesToClose(tabs), []);
+});
+
+test('planDuplicatesToClose: keeps the lowest id and closes the rest', () => {
+    const tabs = [
+        tab({ id: 5, url: 'https://a.com' }),
+        tab({ id: 2, url: 'https://a.com' }),
+        tab({ id: 9, url: 'https://a.com' }),
+    ];
+    // Oldest tab (id 2) is kept; the two newer duplicates are closed.
+    assert.deepEqual(planDuplicatesToClose(tabs), [5, 9]);
+});
+
+test('planDuplicatesToClose: lowest id wins regardless of array order', () => {
+    const tabs = [
+        tab({ id: 2, url: 'https://a.com' }),
+        tab({ id: 1, url: 'https://a.com' }),
+    ];
+    assert.deepEqual(planDuplicatesToClose(tabs), [2]);
+});
+
+test('planDuplicatesToClose: dedups each url group independently', () => {
+    const tabs = [
+        tab({ id: 1, url: 'https://a.com' }),
+        tab({ id: 2, url: 'https://a.com' }),
+        tab({ id: 3, url: 'https://b.com' }),
+        tab({ id: 4, url: 'https://b.com' }),
+    ];
+    assert.deepEqual(planDuplicatesToClose(tabs), [2, 4]);
+});
+
+test('planDuplicatesToClose: distinct query strings are not duplicates', () => {
+    const tabs = [
+        tab({ id: 1, url: 'https://a.com/?x=1' }),
+        tab({ id: 2, url: 'https://a.com/?x=2' }),
+    ];
+    assert.deepEqual(planDuplicatesToClose(tabs), []);
+});
+
+test('planDuplicatesToClose: pinned status is ignored, lowest id still wins', () => {
+    const tabs = [
+        tab({ id: 5, pinned: true, url: 'https://a.com' }),
+        tab({ id: 2, pinned: false, url: 'https://a.com' }),
+    ];
+    // Current behavior: dedup keys purely on URL, so the pinned tab (id 5) is
+    // the one closed because it has the higher id.
+    assert.deepEqual(planDuplicatesToClose(tabs), [5]);
+});
+
+test('planDuplicatesToClose: empty input yields nothing to close', () => {
+    assert.deepEqual(planDuplicatesToClose([]), []);
 });

@@ -1,5 +1,4 @@
-// Background script for the Duplicate Tab Closer extension
-// This runs in the background and handles extension lifecycle events
+// Service worker: badge upkeep and keyboard-shortcut handling.
 
 importScripts('tabs.js');
 
@@ -8,11 +7,10 @@ chrome.runtime.onInstalled.addListener(() => {
     refreshModeBadge();
 });
 
-// Re-apply the badge when the worker spins back up (browser start, wake-up).
+// Re-apply the badge when the worker spins back up.
 chrome.runtime.onStartup.addListener(refreshModeBadge);
 
-// Keep the badge in sync with whatever changes the sort mode: the popup
-// dropdown, the toggle shortcut, anything that writes to storage.
+// Keep the badge in sync with any sort-mode change.
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && changes.sortMode) {
         updateModeBadge(changes.sortMode.newValue);
@@ -24,7 +22,6 @@ async function refreshModeBadge() {
     updateModeBadge(sortMode || 'url');
 }
 
-// Keyboard shortcut support: run the same sort + dedup action as the popup
 chrome.commands.onCommand.addListener((command) => {
     if (command === 'close-duplicates') {
         cleanUpTabs();
@@ -33,18 +30,23 @@ chrome.commands.onCommand.addListener((command) => {
     }
 });
 
+let cleanupInProgress = false;
+
 async function cleanUpTabs({ toggleMode = false } = {}) {
+    // Skip overlapping runs so rapid shortcut presses don't race each other.
+    if (cleanupInProgress) {
+        return;
+    }
+    cleanupInProgress = true;
     try {
         const { sortMode } = await chrome.storage.local.get('sortMode');
         let mode = sortMode || 'url';
 
-        // Switch the sort mode and persist it so the popup reflects the change.
         if (toggleMode) {
             mode = mode === 'url' ? 'recent' : 'url';
             await chrome.storage.local.set({ sortMode: mode });
         }
 
-        // Background runs without a focused tab, so target the last-focused window.
         const windowQuery = { lastFocusedWindow: true };
         const closedCount = await closeDuplicateTabs(windowQuery);
         const sortedCount = await sortTabs(mode, windowQuery);
@@ -52,5 +54,7 @@ async function cleanUpTabs({ toggleMode = false } = {}) {
         console.log(`Closed ${closedCount} duplicate tabs, sorted ${sortedCount} tabs by ${mode}`);
     } catch (error) {
         console.error('Error cleaning up tabs:', error);
+    } finally {
+        cleanupInProgress = false;
     }
 }

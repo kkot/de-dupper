@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Limit number of comments in code and make them concise.
+
 ## Updating readme
 
 `readme.md` is the specification: it states what the extension does, as plain
