@@ -6,7 +6,20 @@ remaining tabs. Run it from the popup button or with the keyboard shortcut
 
 ## Behavior
 
+Running cleanup performs three steps in order: **group**, then **dedup**, then
+**sort**.
+
 - Operates on the **current window only**.
+- **Magnet groups:** a tab group whose title is wrapped in slashes (e.g.
+  `/github\.com/`) acts as a magnet — the inner text is read as a regular
+  expression, and any ungrouped, non-pinned tab in the same window whose URL or
+  title matches is pulled into that group.
+  - Matching is always **case-insensitive**; extra regex flags can be appended
+    after the closing slash (e.g. `/foo/m`).
+  - The first group whose regex matches a tab wins.
+  - An empty pattern (`//`) or an invalid regex in the title is ignored.
+  - Grouping runs **before** dedup so a group holding only a placeholder tab
+    isn't emptied (and auto-deleted by Chrome) before its matching tabs arrive.
 - **Dedup:** tabs with identical URLs are duplicates. The oldest tab (lowest tab
   id) per URL is kept; the rest are closed. URLs are compared exactly, including
   the trailing slash and query parameters.
