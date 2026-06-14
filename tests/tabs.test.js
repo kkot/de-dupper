@@ -4,20 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { getCompare, segmentKeyFor, planTabMoves, planDuplicatesToClose } = require('../tabs.js');
-
-// Build a tab with sensible defaults; override only what a test cares about.
-function tab(overrides) {
-    return {
-        id: 1,
-        windowId: 1,
-        index: 0,
-        url: 'https://example.com/',
-        pinned: false,
-        groupId: -1,
-        lastAccessed: 0,
-        ...overrides,
-    };
-}
+const { tab } = require('./helpers');
 
 // Replay batch moves the way chrome does (remove, then reinsert at index) so
 // tests can assert the final visible order rather than raw move ops.

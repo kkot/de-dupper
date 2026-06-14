@@ -1,13 +1,6 @@
 // Shared tab logic for the popup ({ currentWindow }) and the background service
 // worker ({ lastFocusedWindow }, since a worker has no "current" window).
 
-// Show the active sort mode as a toolbar badge.
-function updateModeBadge(mode) {
-    const isRecent = mode === 'recent';
-    chrome.action.setBadgeText({ text: isRecent ? 'REC' : 'URL' });
-    chrome.action.setBadgeBackgroundColor({ color: isRecent ? '#34a853' : '#4285f4' });
-}
-
 // Group by exact URL; keep the oldest tab (lowest id) per URL, return the rest.
 function planDuplicatesToClose(tabs) {
     const urlGroups = {};

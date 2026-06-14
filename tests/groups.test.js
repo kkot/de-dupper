@@ -4,24 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { planTabsToGroup } = require('../groups.js');
-
-// Build a tab with sensible defaults; override only what a test cares about.
-function tab(overrides) {
-    return {
-        id: 1,
-        windowId: 1,
-        url: 'https://example.com/',
-        title: '',
-        pinned: false,
-        groupId: -1,
-        ...overrides,
-    };
-}
-
-// Build a tab group (shape returned by chrome.tabGroups.query).
-function group(overrides) {
-    return { id: 100, windowId: 1, title: '', ...overrides };
-}
+const { tab, group } = require('./helpers');
 
 test('planTabsToGroup: ungrouped tab matching by url is pulled into the group', () => {
     const tabs = [

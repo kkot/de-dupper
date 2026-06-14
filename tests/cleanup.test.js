@@ -1,10 +1,11 @@
-// Integration tests for runCleanup's ordering (groups.js), driven against a
+// Integration tests for runCleanup's ordering (cleanup.js), driven against a
 // minimal chrome mock that models Chrome auto-deleting a group once it's empty.
 // Run with: node --test
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { runCleanup } = require('../groups.js');
+const { runCleanup } = require('../cleanup.js');
+const { tab } = require('./helpers');
 
 // Install a fake chrome backed by `store`, mutated the way Chrome would.
 function installChrome(store) {
@@ -30,10 +31,6 @@ function installChrome(store) {
                 store.groups.filter(g => g.windowId === windowId).map(g => ({ ...g })),
         },
     };
-}
-
-function tab(overrides) {
-    return { id: 1, windowId: 1, index: 0, url: 'https://example.com/', title: '', pinned: false, groupId: -1, lastAccessed: 0, ...overrides };
 }
 
 test('runCleanup: magnet group survives dedup that would remove its only (placeholder) tab', async () => {

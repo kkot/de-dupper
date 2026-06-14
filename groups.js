@@ -9,8 +9,6 @@
 const isNode = (typeof module !== 'undefined' && module.exports);
 const tabsApi = isNode ? require('./tabs.js') : null;
 const segmentKey = isNode ? tabsApi.segmentKeyFor : segmentKeyFor;
-const closeDuplicates = isNode ? tabsApi.closeDuplicateTabs : closeDuplicateTabs;
-const sortMatchingTabs = isNode ? tabsApi.sortTabs : sortTabs;
 
 // Plan which ungrouped tabs get pulled into magnet groups. Returns one
 // { groupId, tabIds } per group that gained tabs. First matching group wins.
@@ -65,18 +63,7 @@ async function groupMatchingTabs(windowQuery) {
     return groupedCount;
 }
 
-// Run the full cleanup in the order that protects magnet groups: pull matching
-// tabs into /regex/-titled groups FIRST, so a group whose only tab is a
-// placeholder "New Tab" isn't emptied — and thus auto-deleted by Chrome — by the
-// dedup step before its matching tabs are moved in. Then dedup, then sort.
-async function runCleanup(mode, windowQuery) {
-    const groupedCount = await groupMatchingTabs(windowQuery);
-    const closedCount = await closeDuplicates(windowQuery);
-    const sortedCount = await sortMatchingTabs(mode, windowQuery);
-    return { groupedCount, closedCount, sortedCount };
-}
-
 // Exported for Node unit tests; skipped in the browser (no module system).
 if (isNode) {
-    module.exports = { planTabsToGroup, groupMatchingTabs, runCleanup };
+    module.exports = { planTabsToGroup, groupMatchingTabs };
 }

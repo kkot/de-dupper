@@ -1,6 +1,13 @@
 // Service worker: badge upkeep and keyboard-shortcut handling.
 
-importScripts('tabs.js', 'groups.js');
+importScripts('tabs.js', 'groups.js', 'cleanup.js');
+
+// Show the active sort mode as a toolbar badge.
+function updateModeBadge(mode) {
+    const isRecent = mode === 'recent';
+    chrome.action.setBadgeText({ text: isRecent ? 'REC' : 'URL' });
+    chrome.action.setBadgeBackgroundColor({ color: isRecent ? '#34a853' : '#4285f4' });
+}
 
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Duplicate Tab Closer extension installed');
