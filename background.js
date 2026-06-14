@@ -1,6 +1,6 @@
 // Service worker: badge upkeep and keyboard-shortcut handling.
 
-importScripts('tabs.js');
+importScripts('tabs.js', 'groups.js');
 
 chrome.runtime.onInstalled.addListener(() => {
     console.log('Duplicate Tab Closer extension installed');
@@ -49,9 +49,10 @@ async function cleanUpTabs({ toggleMode = false } = {}) {
 
         const windowQuery = { lastFocusedWindow: true };
         const closedCount = await closeDuplicateTabs(windowQuery);
+        const groupedCount = await groupMatchingTabs(windowQuery);
         const sortedCount = await sortTabs(mode, windowQuery);
 
-        console.log(`Closed ${closedCount} duplicate tabs, sorted ${sortedCount} tabs by ${mode}`);
+        console.log(`Closed ${closedCount} duplicate tabs, grouped ${groupedCount} tabs, sorted ${sortedCount} tabs by ${mode}`);
     } catch (error) {
         console.error('Error cleaning up tabs:', error);
     } finally {

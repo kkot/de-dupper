@@ -28,14 +28,20 @@ document.addEventListener('DOMContentLoaded', function() {
             // 1. Close duplicate tabs (keep the oldest tab per URL)
             const closedCount = await closeDuplicateTabs(windowQuery);
 
-            // 2. Sort the remaining tabs by the selected mode
+            // 2. Pull matching ungrouped tabs into magnet (/regex/-titled) groups
+            const groupedCount = await groupMatchingTabs(windowQuery);
+
+            // 3. Sort the remaining tabs by the selected mode
             const sortedCount = await sortTabs(mode, windowQuery);
 
             const label = mode === 'recent' ? 'recent usage' : 'URL';
             const closedMsg = closedCount > 0
                 ? `Closed ${closedCount} duplicate${closedCount === 1 ? '' : 's'}, `
                 : 'No duplicates, ';
-            showStatus(`${closedMsg}sorted ${sortedCount} tab${sortedCount === 1 ? '' : 's'} by ${label}`, 'success');
+            const groupedMsg = groupedCount > 0
+                ? `grouped ${groupedCount} tab${groupedCount === 1 ? '' : 's'}, `
+                : '';
+            showStatus(`${closedMsg}${groupedMsg}sorted ${sortedCount} tab${sortedCount === 1 ? '' : 's'} by ${label}`, 'success');
         } catch (error) {
             console.error('Error cleaning up tabs:', error);
             showStatus('Error occurred while cleaning up tabs', 'error');

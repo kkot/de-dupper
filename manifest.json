@@ -6,7 +6,8 @@
   "permissions": [
     "tabs",
     "activeTab",
-    "storage"
+    "storage",
+    "tabGroups"
   ],
   "action": {
     "default_popup": "popup.html",
