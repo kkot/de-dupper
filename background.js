@@ -48,9 +48,7 @@ async function cleanUpTabs({ toggleMode = false } = {}) {
         }
 
         const windowQuery = { lastFocusedWindow: true };
-        const closedCount = await closeDuplicateTabs(windowQuery);
-        const groupedCount = await groupMatchingTabs(windowQuery);
-        const sortedCount = await sortTabs(mode, windowQuery);
+        const { groupedCount, closedCount, sortedCount } = await runCleanup(mode, windowQuery);
 
         console.log(`Closed ${closedCount} duplicate tabs, grouped ${groupedCount} tabs, sorted ${sortedCount} tabs by ${mode}`);
     } catch (error) {

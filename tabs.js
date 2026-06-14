@@ -113,5 +113,5 @@ async function sortTabs(mode, windowQuery) {
 
 // Exported for Node unit tests; skipped in the browser (no module system).
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { getCompare, segmentKeyFor, planTabMoves, planDuplicatesToClose };
+    module.exports = { getCompare, segmentKeyFor, planTabMoves, planDuplicatesToClose, closeDuplicateTabs, sortTabs };
 }

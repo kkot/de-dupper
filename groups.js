@@ -3,11 +3,14 @@
 // window whose URL or title matches is pulled into that group. Shared by the
 // popup and the background service worker.
 
-// segmentKeyFor lives in tabs.js — a global in the browser, a module export in
-// Node tests. Resolve it without assuming a module system.
-const segmentKey = (typeof module !== 'undefined' && module.exports)
-    ? require('./tabs.js').segmentKeyFor
-    : segmentKeyFor;
+// tabs.js helpers are globals in the browser (loaded first) and module exports
+// in Node tests. Resolve them once without assuming a module system. Untaken
+// ternary branches aren't evaluated, so the bare identifiers are safe in Node.
+const isNode = (typeof module !== 'undefined' && module.exports);
+const tabsApi = isNode ? require('./tabs.js') : null;
+const segmentKey = isNode ? tabsApi.segmentKeyFor : segmentKeyFor;
+const closeDuplicates = isNode ? tabsApi.closeDuplicateTabs : closeDuplicateTabs;
+const sortMatchingTabs = isNode ? tabsApi.sortTabs : sortTabs;
 
 // Plan which ungrouped tabs get pulled into magnet groups. Returns one
 // { groupId, tabIds } per group that gained tabs. First matching group wins.
@@ -62,7 +65,18 @@ async function groupMatchingTabs(windowQuery) {
     return groupedCount;
 }
 
+// Run the full cleanup in the order that protects magnet groups: pull matching
+// tabs into /regex/-titled groups FIRST, so a group whose only tab is a
+// placeholder "New Tab" isn't emptied — and thus auto-deleted by Chrome — by the
+// dedup step before its matching tabs are moved in. Then dedup, then sort.
+async function runCleanup(mode, windowQuery) {
+    const groupedCount = await groupMatchingTabs(windowQuery);
+    const closedCount = await closeDuplicates(windowQuery);
+    const sortedCount = await sortMatchingTabs(mode, windowQuery);
+    return { groupedCount, closedCount, sortedCount };
+}
+
 // Exported for Node unit tests; skipped in the browser (no module system).
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { planTabsToGroup };
+if (isNode) {
+    module.exports = { planTabsToGroup, groupMatchingTabs, runCleanup };
 }

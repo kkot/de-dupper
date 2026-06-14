@@ -25,14 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const mode = sortMode.value;
             const windowQuery = { currentWindow: true };
 
-            // 1. Close duplicate tabs (keep the oldest tab per URL)
-            const closedCount = await closeDuplicateTabs(windowQuery);
-
-            // 2. Pull matching ungrouped tabs into magnet (/regex/-titled) groups
-            const groupedCount = await groupMatchingTabs(windowQuery);
-
-            // 3. Sort the remaining tabs by the selected mode
-            const sortedCount = await sortTabs(mode, windowQuery);
+            // Group magnet tabs, dedup, then sort — see runCleanup for ordering.
+            const { groupedCount, closedCount, sortedCount } = await runCleanup(mode, windowQuery);
 
             const label = mode === 'recent' ? 'recent usage' : 'URL';
             const closedMsg = closedCount > 0
